@@ -166,7 +166,7 @@ class ConvertFunctionsToVirtualList(object):
 
 
 def RC4_encrypt(key, plaintext):
-    S = [i for i in range(256)]
+    S = list(range(256))
     j = 0
     for i in range(256):
         j = (j + S[i] + ord_(key[i % len(key)])) % 256
@@ -183,10 +183,10 @@ def RC4_encrypt(key, plaintext):
 
 
 def matrixMultiply(a, b):
-    return [[sum([float(i)*float(j)
-                  for i, j in zip(row, col)]
-                ) for col in zip(*b)]
-            for row in a]
+    return [
+        [sum(float(i) * float(j) for i, j in zip(row, col)) for col in zip(*b)]
+        for row in a
+    ]
 
 
 def markLocation(stream):
@@ -194,11 +194,10 @@ def markLocation(stream):
     # Mainly for debugging
     RADIUS = 5000
     stream.seek(-RADIUS, 1)
-    outputDoc = open('PyPDF2_pdfLocation.txt', 'w')
-    outputDoc.write(stream.read(RADIUS))
-    outputDoc.write('HERE')
-    outputDoc.write(stream.read(RADIUS))
-    outputDoc.close()
+    with open('PyPDF2_pdfLocation.txt', 'w') as outputDoc:
+        outputDoc.write(stream.read(RADIUS))
+        outputDoc.write('HERE')
+        outputDoc.write(stream.read(RADIUS))
     stream.seek(-RADIUS, 1)
 
 
@@ -234,58 +233,41 @@ else:
             return bc[s]
         if type(s) == bytes:
             return s
-        else:
-            r = s.encode('latin-1')
-            if len(s) < 2:
-                bc[s] = r
-            return r
+        r = s.encode('latin-1')
+        if len(s) < 2:
+            bc[s] = r
+        return r
 
 
 def u_(s):
-    if sys.version_info[0] < 3:
-        return unicode(s, 'unicode_escape')
-    else:
-        return s
+    return unicode(s, 'unicode_escape') if sys.version_info[0] < 3 else s
 
 
 def str_(b):
-    if sys.version_info[0] < 3:
-        return b
+    if sys.version_info[0] >= 3 and type(b) == bytes:
+        return b.decode('latin-1')
     else:
-        if type(b) == bytes:
-            return b.decode('latin-1')
-        else:
-            return b
+        return b
 
 
 def ord_(b):
-    if sys.version_info[0] < 3 or type(b) == str:
-        return ord(b)
-    else:
-        return b
+    return ord(b) if sys.version_info[0] < 3 or type(b) == str else b
 
 
 def chr_(c):
-    if sys.version_info[0] < 3:
-        return c
-    else:
-        return chr(c)
+    return c if sys.version_info[0] < 3 else chr(c)
 
 
 def barray(b):
-    if sys.version_info[0] < 3:
-        return b
-    else:
-        return bytearray(b)
+    return b if sys.version_info[0] < 3 else bytearray(b)
 
 
 def hexencode(b):
     if sys.version_info[0] < 3:
         return b.encode('hex')
-    else:
-        import codecs
-        coder = codecs.getencoder('hex_codec')
-        return coder(b)[0]
+    import codecs
+    coder = codecs.getencoder('hex_codec')
+    return coder(b)[0]
 
 
 def hexStr(num):

@@ -73,7 +73,7 @@ if __name__ == "__main__":
             merger.append(in_fs[filename], pages=page_range)
     except:
         print(traceback.format_exc(), file=stderr)
-        print("Error while reading " + filename, file=stderr)
+        print(f"Error while reading {filename}", file=stderr)
         exit(1)
     merger.write(output)
     # In 3.0, input files must stay open until output is written.

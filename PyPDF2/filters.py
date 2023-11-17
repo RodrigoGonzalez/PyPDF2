@@ -66,10 +66,7 @@ except ImportError:
         return retval
 
     def _bytearr_to_string(bytes):
-        retval = ""
-        for i in range(bytes.Length):
-            retval += chr(bytes[i])
-        return retval
+        return "".join(chr(bytes[i]) for i in range(bytes.Length))
 
     def _read_bytes(stream):
         ms = IO.MemoryStream()
@@ -109,8 +106,8 @@ except ImportError:
 
 
 class FlateDecode(object):
-    def decode(data, decodeParms):
-        data = decompress(data)
+    def decode(self, decodeParms):
+        self = decompress(self)
         predictor = 1
         if decodeParms:
             try:
@@ -120,61 +117,59 @@ class FlateDecode(object):
 
         # predictor 1 == no predictor
         if predictor != 1:
-            columns = decodeParms["/Columns"]
-            # PNG prediction:
-            if predictor >= 10 and predictor <= 15:
-                output = StringIO()
-                # PNG prediction can vary from row to row
-                rowlength = columns + 1
-                assert len(data) % rowlength == 0
-                prev_rowdata = (0,) * rowlength
-                for row in range(len(data) // rowlength):
-                    rowdata = [ord_(x) for x in data[(row*rowlength):((row+1)*rowlength)]]
-                    filterByte = rowdata[0]
-                    if filterByte == 0:
-                        pass
-                    elif filterByte == 1:
-                        for i in range(2, rowlength):
-                            rowdata[i] = (rowdata[i] + rowdata[i-1]) % 256
-                    elif filterByte == 2:
-                        for i in range(1, rowlength):
-                            rowdata[i] = (rowdata[i] + prev_rowdata[i]) % 256
-                    elif filterByte == 3:
-                        for i in range(1, rowlength):
-                            left = rowdata[i-1] if i > 1 else 0
-                            floor = math.floor(left + prev_rowdata[i])/2
-                            rowdata[i] = (rowdata[i] + int(floor)) % 256
-                    elif filterByte == 4:
-                        for i in range(1, rowlength):
-                            left = rowdata[i - 1] if i > 1 else 0
-                            up = prev_rowdata[i]
-                            up_left = prev_rowdata[i - 1] if i > 1 else 0
-                            paeth = paethPredictor(left, up, up_left)
-                            rowdata[i] = (rowdata[i] + paeth) % 256
-                    else:
-                        # unsupported PNG filter
-                        raise PdfReadError("Unsupported PNG filter %r" % filterByte)
-                    prev_rowdata = rowdata
-                    output.write(''.join([chr(x) for x in rowdata[1:]]))
-                data = output.getvalue()
-            else:
+            if predictor < 10 or predictor > 15:
                 # unsupported predictor
                 raise PdfReadError("Unsupported flatedecode predictor %r" % predictor)
-        return data
+            output = StringIO()
+            columns = decodeParms["/Columns"]
+            # PNG prediction can vary from row to row
+            rowlength = columns + 1
+            assert len(self) % rowlength == 0
+            prev_rowdata = (0,) * rowlength
+            for row in range(len(self) // rowlength):
+                rowdata = [ord_(x) for x in data[(row*rowlength):((row+1)*rowlength)]]
+                filterByte = rowdata[0]
+                if filterByte == 0:
+                    pass
+                elif filterByte == 1:
+                    for i in range(2, rowlength):
+                        rowdata[i] = (rowdata[i] + rowdata[i-1]) % 256
+                elif filterByte == 2:
+                    for i in range(1, rowlength):
+                        rowdata[i] = (rowdata[i] + prev_rowdata[i]) % 256
+                elif filterByte == 3:
+                    for i in range(1, rowlength):
+                        left = rowdata[i-1] if i > 1 else 0
+                        floor = math.floor(left + prev_rowdata[i])/2
+                        rowdata[i] = (rowdata[i] + int(floor)) % 256
+                elif filterByte == 4:
+                    for i in range(1, rowlength):
+                        left = rowdata[i - 1] if i > 1 else 0
+                        up = prev_rowdata[i]
+                        up_left = prev_rowdata[i - 1] if i > 1 else 0
+                        paeth = paethPredictor(left, up, up_left)
+                        rowdata[i] = (rowdata[i] + paeth) % 256
+                else:
+                    # unsupported PNG filter
+                    raise PdfReadError("Unsupported PNG filter %r" % filterByte)
+                prev_rowdata = rowdata
+                output.write(''.join([chr(x) for x in prev_rowdata[1:]]))
+            self = output.getvalue()
+        return self
     decode = staticmethod(decode)
 
-    def encode(data):
-        return compress(data)
+    def encode(self):
+        return compress(self)
     encode = staticmethod(encode)
 
 
 class ASCIIHexDecode(object):
-    def decode(data, decodeParms=None):
+    def decode(self, decodeParms=None):
         retval = ""
         char = ""
         x = 0
         while True:
-            c = data[x]
+            c = self[x]
             if c == ">":
                 break
             elif c.isspace():
@@ -213,13 +208,12 @@ class LZWDecode(object):
         def nextCode(self):
             fillbits=self.bitspercode
             value=0
-            while fillbits>0 :
+            while fillbits>0:
                 if self.bytepos >= len(self.data):
                     return -1
                 nextbits=ord_(self.data[self.bytepos])
                 bitsfromhere=8-self.bitpos
-                if bitsfromhere>fillbits:
-                    bitsfromhere=fillbits
+                bitsfromhere = min(bitsfromhere, fillbits)
                 value |= (((nextbits >> (8-self.bitpos-bitsfromhere)) &
                            (0xff >> (8-bitsfromhere))) <<
                           (fillbits-bitsfromhere))
@@ -252,13 +246,11 @@ class LZWDecode(object):
                     if cW < self.dictlen:
                         baos += self.dict[cW]
                         p=self.dict[pW]+self.dict[cW][0]
-                        self.dict[self.dictlen]=p
-                        self.dictlen+=1
                     else:
                         p=self.dict[pW]+self.dict[pW][0]
                         baos+=p
-                        self.dict[self.dictlen] = p;
-                        self.dictlen+=1
+                    self.dict[self.dictlen]=p
+                    self.dictlen+=1
                     if (self.dictlen >= (1 << self.bitspercode) - 1 and
                         self.bitspercode < 12):
                         self.bitspercode+=1
@@ -270,46 +262,42 @@ class LZWDecode(object):
 
 
 class ASCII85Decode(object):
-    def decode(data, decodeParms=None):
+    def decode(self, decodeParms=None):
         if version_info < ( 3, 0 ):
             retval = ""
             group = []
             x = 0
             hitEod = False
             # remove all whitespace from data
-            data = [y for y in data if not (y in ' \n\r\t')]
+            self = [y for y in data if y not in ' \n\r\t']
             while not hitEod:
-                c = data[x]
-                if len(retval) == 0 and c == "<" and data[x+1] == "~":
+                c = self[x]
+                if len(retval) == 0 and c == "<" and self[x + 1] == "~":
                     x += 2
                     continue
-                #elif c.isspace():
-                #    x += 1
-                #    continue
                 elif c == 'z':
                     assert len(group) == 0
                     retval += '\x00\x00\x00\x00'
                     x += 1
                     continue
-                elif c == "~" and data[x+1] == ">":
-                    if len(group) != 0:
-                        # cannot have a final group of just 1 char
-                        assert len(group) > 1
-                        cnt = len(group) - 1
-                        group += [ 85, 85, 85 ]
-                        hitEod = cnt
-                    else:
+                elif c == "~" and self[x + 1] == ">":
+                    if len(group) == 0:
                         break
+                    # cannot have a final group of just 1 char
+                    assert len(group) > 1
+                    cnt = len(group) - 1
+                    group += [ 85, 85, 85 ]
+                    hitEod = cnt
                 else:
                     c = ord(c) - 33
                     assert c >= 0 and c < 85
                     group += [ c ]
                 if len(group) >= 5:
                     b = group[0] * (85**4) + \
-                        group[1] * (85**3) + \
-                        group[2] * (85**2) + \
-                        group[3] * 85 + \
-                        group[4]
+                            group[1] * (85**3) + \
+                            group[2] * (85**2) + \
+                            group[3] * 85 + \
+                            group[4]
                     assert b < (2**32 - 1)
                     c4 = chr((b >> 0) % 256)
                     c3 = chr((b >> 8) % 256)
@@ -322,12 +310,12 @@ class ASCII85Decode(object):
                 x += 1
             return retval
         else:
-            if isinstance(data, str):
-                data = data.encode('ascii')
+            if isinstance(self, str):
+                self = self.encode('ascii')
             n = b = 0
             out = bytearray()
-            for c in data:
-                if ord('!') <= c and c <= ord('u'):
+            for c in self:
+                if ord('!') <= c <= ord('u'):
                     n += 1
                     b = b*85+(c-33)
                     if n == 5:
@@ -356,21 +344,19 @@ def decodeStreamData(stream):
     # If there is not data to decode we should not try to decode the data.
     if data:
         for filterType in filters:
-            if filterType == "/FlateDecode" or filterType == "/Fl":
+            if filterType in ["/FlateDecode", "/Fl"]:
                 data = FlateDecode.decode(data, stream.get("/DecodeParms"))
-            elif filterType == "/ASCIIHexDecode" or filterType == "/AHx":
+            elif filterType in ["/ASCIIHexDecode", "/AHx"]:
                 data = ASCIIHexDecode.decode(data)
-            elif filterType == "/LZWDecode" or filterType == "/LZW":
+            elif filterType in ["/LZWDecode", "/LZW"]:
                 data = LZWDecode.decode(data, stream.get("/DecodeParms"))
-            elif filterType == "/ASCII85Decode" or filterType == "/A85":
+            elif filterType in ["/ASCII85Decode", "/A85"]:
                 data = ASCII85Decode.decode(data)
             elif filterType == "/Crypt":
                 decodeParams = stream.get("/DecodeParams", {})
-                if "/Name" not in decodeParams and "/Type" not in decodeParams:
-                    pass
-                else:
+                if "/Name" in decodeParams or "/Type" in decodeParams:
                     raise NotImplementedError("/Crypt filter with /Name or /Type not supported yet")
             else:
                 # unsupported filter
-                raise NotImplementedError("unsupported filter %s" % filterType)
+                raise NotImplementedError(f"unsupported filter {filterType}")
     return data

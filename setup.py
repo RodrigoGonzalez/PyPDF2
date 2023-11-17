@@ -23,11 +23,10 @@ It is therefore a useful tool for websites that manage or manipulate PDFs.
 VERSIONFILE="PyPDF2/_version.py"
 verstrline = open(VERSIONFILE, "rt").read()
 VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
-mo = re.search(VSRE, verstrline, re.M)
-if mo:
+if mo := re.search(VSRE, verstrline, re.M):
     verstr = mo.group(1)
 else:
-    raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE))
+    raise RuntimeError(f"Unable to find version string in {VERSIONFILE}.")
 
 setup(
         name="PyPDF2",

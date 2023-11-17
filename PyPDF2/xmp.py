@@ -72,8 +72,7 @@ class XmpInformation(PdfObject):
                 attr = desc.getAttributeNodeNS(namespace, name)
                 if attr != None:
                     yield attr
-                for element in desc.getElementsByTagNameNS(namespace, name):
-                    yield element
+                yield from desc.getElementsByTagNameNS(namespace, name)
 
     def getNodesInNamespace(self, aboutUri, namespace):
         for desc in self.rdfRoot.getElementsByTagNameNS(RDF_NAMESPACE, "Description"):
@@ -87,17 +86,17 @@ class XmpInformation(PdfObject):
                         yield child
 
     def _getText(self, element):
-        text = ""
-        for child in element.childNodes:
-            if child.nodeType == child.TEXT_NODE:
-                text += child.data
-        return text
+        return "".join(
+            child.data
+            for child in element.childNodes
+            if child.nodeType == child.TEXT_NODE
+        )
 
-    def _converter_string(value):
-        return value
+    def _converter_string(self):
+        return self
 
-    def _converter_date(value):
-        m = iso8601.match(value)
+    def _converter_date(self):
+        m = iso8601.match(self)
         year = int(m.group("year"))
         month = int(m.group("month") or "1")
         day = int(m.group("day") or "1")

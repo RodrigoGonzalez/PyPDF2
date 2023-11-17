@@ -87,10 +87,9 @@ class PageRange(object):
     @staticmethod
     def valid(input):
         """ True if input is a valid initializer for a PageRange. """
-        return isinstance(input, slice)  or \
-               isinstance(input, PageRange) or \
-               (isString(input)
-                and bool(re.match(PAGE_RANGE_RE, input)))
+        return isinstance(input, (slice, PageRange)) or (
+            isString(input) and bool(re.match(PAGE_RANGE_RE, input))
+        )
 
     def to_slice(self):
         """ Return the slice equivalent of this page range. """
@@ -99,18 +98,18 @@ class PageRange(object):
     def __str__(self):
         """ A string like "1:2:3". """
         s = self._slice
-        if s.step == None:
+        if s.step is None:
             if s.start != None  and  s.stop == s.start + 1:
                 return str(s.start)
 
             indices = s.start, s.stop
         else:
             indices = s.start, s.stop, s.step
-        return ':'.join("" if i == None else str(i) for i in indices)
+        return ':'.join("" if i is None else str(i) for i in indices)
 
     def __repr__(self):
         """ A string like "PageRange('1:2:3')". """
-        return "PageRange(" + repr(str(self)) + ")"
+        return f"PageRange({repr(str(self))})"
 
     def indices(self, n):
         """
